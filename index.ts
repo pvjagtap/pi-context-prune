@@ -58,7 +58,7 @@ export default function (pi: ExtensionAPI) {
   let isFlushing = false;
 
   type FlushResult =
-    | { ok: true; reason: "flushed" | "skipped-oversized"; batchCount: number; toolCallCount: number; rawCharCount: number; summaryCharCount: number }
+    | { ok: true; reason: "flushed" | "skipped-oversized" | "all-below-threshold"; batchCount: number; toolCallCount: number; rawCharCount: number; summaryCharCount: number }
     | { ok: false; reason: "empty" | "already-flushing" | "summarizer-failed" | "stale-context" | "failed" | "aborted"; error?: string };
 
   type SessionAppender = {
@@ -180,13 +180,29 @@ export default function (pi: ExtensionAPI) {
         worthSummarizing.push(b);
       }
     }
-    if (tooSmall.length > 0 && currentConfig.value.showPruneStatusLine) {
-      ctx.ui?.notify?.(`pruner: skipped ${tooSmall.length} batch(es) below ${MIN_RAW_CHARS_TO_SUMMARIZE} char threshold — left in context as-is`);
+    // Advance frontier past too-small batches so they aren't re-captured on
+    // subsequent flushes. They remain in context unpruned (intentionally).
+    if (tooSmall.length > 0) {
+      const lastSmall = tooSmall[tooSmall.length - 1];
+      const lastSmallTC = lastSmall.toolCalls[lastSmall.toolCalls.length - 1];
+      const smallFrontier: PruneFrontier = {
+        lastAttemptedToolCallId: lastSmallTC.toolCallId,
+        lastAttemptedToolName: lastSmallTC.toolName,
+        lastAttemptedTurnIndex: lastSmall.turnIndex,
+        lastAttemptedTimestamp: lastSmall.timestamp,
+        attemptedBatchCount: tooSmall.length,
+        attemptedToolCallCount: tooSmall.reduce((s, b) => s + b.toolCalls.length, 0),
+        rawCharCount: tooSmall.reduce((s, b) => s + b.toolCalls.reduce((ss, tc) => ss + tc.resultText.length, 0), 0),
+        summaryCharCount: 0,
+        outcome: "skipped-below-threshold",
+      };
+      frontier.advance(smallFrontier);
+      try { frontier.persist(pi); } catch { /* best effort */ }
     }
     batches = worthSummarizing;
     if (batches.length === 0) {
-      // All batches were too small — nothing to summarize, but not an error.
-      return { ok: true, batchCount: 0, toolCallCount: 0, reason: "all-below-threshold" } as any;
+      pendingBatches.length = 0;
+      return { ok: true, batchCount: 0, toolCallCount: 0, rawCharCount: 0, summaryCharCount: 0, reason: "all-below-threshold" };
     }
 
     // Bail out before we drain pendingBatches so they don't need restoring.
@@ -355,16 +371,8 @@ export default function (pi: ExtensionAPI) {
 
       setPruneStatusWidget(ctx, currentConfig.value, statsAccum.getStats());
 
-      // Notify about any oversized batches that were skipped
-      for (const batch of oversizedBatches) {
-        const batchRaw = batch.toolCalls.reduce((s, tc) => s + tc.resultText.length, 0);
-        const batchSummaryLen = results[batches.indexOf(batch)]?.summaryText.length ?? 0;
-        safeNotify(
-          ctx,
-          `pruner: skipped pruning turn ${batch.turnIndex} (${batch.toolCalls.length} tool call${batch.toolCalls.length === 1 ? "" : "s"}) — summary was ${batchSummaryLen} chars vs ${batchRaw} raw chars; frontier advanced past this range`,
-          "warning"
-        );
-      }
+      // Oversized batches are silently skipped — frontier already advances past
+      // them so they won't be re-captured. No user notification needed.
 
       return {
         ok: true,

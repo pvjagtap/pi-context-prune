@@ -291,7 +291,7 @@ export interface SummarizerStats {
 }
 
 /** Outcome of the most recent completed prune attempt. */
-export type PruneFrontierOutcome = "summarized" | "skipped-oversized";
+export type PruneFrontierOutcome = "summarized" | "skipped-oversized" | "skipped-below-threshold";
 
 /**
  * Snapshot of the last successfully completed prune attempt boundary.
