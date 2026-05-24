@@ -1,2 +1,4 @@
 node_modules/
 package-lock.json
+.history/
+copilot_all_tools.jsonl

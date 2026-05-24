@@ -26,6 +26,7 @@ import { formatSummaryToolCallRefs, makeSummaryDetails } from "./src/summary-ref
 import type { ContextPruneConfig, CapturedBatch, IndexEntryData, PruneFrontier, FlushOptions } from "./src/types.js";
 import {
   DEFAULT_CONFIG,
+  MIN_RAW_CHARS_TO_SUMMARIZE,
   CONTEXT_PRUNE_TOOL_NAME,
   AGENTIC_AUTO_SYSTEM_PROMPT,
   CUSTOM_TYPE_SUMMARY,
@@ -164,6 +165,29 @@ export default function (pi: ExtensionAPI) {
     let batches: CapturedBatch[] = options.previewedBatches ?? capturePendingBatches(ctx);
 
     if (batches.length === 0) return { ok: false, reason: "empty" };
+
+    // Pre-filter: skip batches whose total raw output is too small to benefit
+    // from summarization. The LLM summary would almost certainly be larger than
+    // the original text, wasting a summarizer call. These batches stay in context
+    // as-is and the frontier advances past them.
+    const tooSmall: CapturedBatch[] = [];
+    const worthSummarizing: CapturedBatch[] = [];
+    for (const b of batches) {
+      const rawChars = b.toolCalls.reduce((s, tc) => s + tc.resultText.length, 0);
+      if (rawChars < MIN_RAW_CHARS_TO_SUMMARIZE) {
+        tooSmall.push(b);
+      } else {
+        worthSummarizing.push(b);
+      }
+    }
+    if (tooSmall.length > 0 && currentConfig.value.showPruneStatusLine) {
+      ctx.ui?.notify?.(`pruner: skipped ${tooSmall.length} batch(es) below ${MIN_RAW_CHARS_TO_SUMMARIZE} char threshold — left in context as-is`);
+    }
+    batches = worthSummarizing;
+    if (batches.length === 0) {
+      // All batches were too small — nothing to summarize, but not an error.
+      return { ok: true, batchCount: 0, toolCallCount: 0, reason: "all-below-threshold" } as any;
+    }
 
     // Bail out before we drain pendingBatches so they don't need restoring.
     if (options.signal?.aborted) return { ok: false, reason: "aborted" };

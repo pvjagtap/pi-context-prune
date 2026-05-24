@@ -8,28 +8,28 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         PI CODING AGENT RUNTIME                              │
+│                         PI CODING AGENT RUNTIME                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────────────────┐   │
 │  │  User    │───►│  Agent   │───►│  Tools   │───►│  Tool Results        │   │
 │  │  Message │    │  (LLM)   │    │  Execute │    │  (raw output)        │   │
 │  └──────────┘    └──────────┘    └──────────┘    └──────────┬───────────┘   │
-│                       ▲                                      │               │
-│                       │                                      ▼               │
-│                       │                          ┌───────────────────────┐   │
-│                       │                          │  SESSION BRANCH       │   │
-│                       │                          │  (full history)       │   │
-│                       │                          └───────────┬───────────┘   │
-│                       │                                      │               │
-│       ┌───────────────┼──────────────────────────────────────┤               │
-│       │               │                                      │               │
-│       │    ┌──────────┴──────────┐              ┌────────────▼───────────┐   │
-│       │    │   "context" EVENT   │◄─────────────│  pi-context-prune      │   │
-│       │    │   (filtered msgs)   │   INTERCEPT  │  EXTENSION             │   │
-│       │    └─────────────────────┘              └────────────────────────┘   │
-│       │                                                                      │
-│       └──────────────────────────────────────────────────────────────────────┘
+│                       ▲                                      │              │
+│                       │                                      ▼              │
+│                       │                          ┌───────────────────────┐  │
+│                       │                          │  SESSION BRANCH       │  │
+│                       │                          │  (full history)       │  │
+│                       │                          └───────────┬───────────┘  │
+│                       │                                      │              │
+│       ┌───────────────┼──────────────────────────────────────┤              │
+│       │               │                                      │              │
+│       │    ┌──────────┴──────────┐              ┌────────────▼───────────┐  │
+│       │    │   "context" EVENT   │◄─────────────│  pi-context-prune      │  │
+│       │    │   (filtered msgs)   │   INTERCEPT  │  EXTENSION             │  │
+│       │    └─────────────────────┘              └────────────────────────┘  │
+│       │                                                                     │
+│       └─────────────────────────────────────────────────────────────────────┘
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -40,41 +40,41 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    pi-context-prune EXTENSION INTERNALS                       │
+│                    pi-context-prune EXTENSION INTERNALS                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────────┐   │
-│  │  index.ts        │     │  config.ts       │     │  types.ts           │   │
-│  │  (orchestrator)  │────►│  (settings.json) │     │  (shared constants) │   │
-│  │                  │     └─────────────────┘     └─────────────────────┘   │
+│  ┌──────────────────┐     ┌──────────────────┐     ┌─────────────────────┐  │
+│  │  index.ts        │     │  config.ts       │     │  types.ts           │  │
+│  │  (orchestrator)  │────►│  (settings.json) │     │  (shared constants) │  │
+│  │                  │     └──────────────────┘     └─────────────────────┘  │
 │  │  Event handlers: │                                                       │
-│  │  • session_start │     ┌─────────────────┐                               │
+│  │  • session_start │     ┌──────────────────┐                              │
 │  │  • turn_end      │────►│  batch-capture   │  Serialize turn data         │
 │  │  • message_end   │     │  .ts             │  into CapturedBatch          │
-│  │  • context       │     └────────┬────────┘                               │
+│  │  • context       │     └────────┬─────────┘                              │
 │  │  • agent_end     │              │                                        │
 │  │  • before_agent_ │              ▼                                        │
-│  │    start         │     ┌─────────────────┐                               │
-│  └──────────┬───────┘     │  summarizer.ts   │  LLM call → markdown        │
+│  │    start         │     ┌──────────────────┐                              │
+│  └──────────┬───────┘     │  summarizer.ts   │  LLM call → markdown         │
 │             │             │  (stream-based)  │  summary text                │
-│             │             └────────┬────────┘                               │
+│             │             └────────┬─────────┘                              │
 │             │                      │                                        │
 │             │                      ▼                                        │
-│             │             ┌─────────────────┐                               │
-│             │             │  indexer.ts       │  Map<toolCallId, Record>     │
-│             │             │  (ToolCallIndexer)│  + session persistence       │
-│             │             └────────┬────────┘                               │
+│             │             ┌───────────────────┐                             │
+│             │             │  indexer.ts       │  Map<toolCallId, Record>    │
+│             │             │  (ToolCallIndexer)│  + session persistence      │
+│             │             └────────┬──────────┘                             │
 │             │                      │                                        │
 │             ▼                      ▼                                        │
-│     ┌─────────────────┐  ┌─────────────────┐  ┌────────────────────────┐   │
-│     │  pruner.ts       │  │  query-tool.ts   │  │  context-prune-tool.ts │   │
-│     │  (filter msgs)   │  │  (recover data)  │  │  (agentic trigger)     │   │
-│     └─────────────────┘  └─────────────────┘  └────────────────────────┘   │
+│     ┌─────────────────┐  ┌──────────────────┐  ┌────────────────────────┐   │
+│     │  pruner.ts      │  │  query-tool.ts   │  │  context-prune-tool.ts │   │
+│     │  (filter msgs)  │  │  (recover data)  │  │  (agentic trigger)     │   │
+│     └─────────────────┘  └──────────────────┘  └────────────────────────┘   │
 │                                                                             │
-│     ┌─────────────────┐  ┌─────────────────┐  ┌────────────────────────┐   │
-│     │  reminder.ts     │  │  frontier.ts     │  │  stats.ts              │   │
-│     │  (<pruner-note>) │  │  (boundary track)│  │  (token/cost stats)    │   │
-│     └─────────────────┘  └─────────────────┘  └────────────────────────┘   │
+│     ┌─────────────────┐  ┌──────────────────┐  ┌────────────────────────┐   │
+│     │  reminder.ts    │  │  frontier.ts     │  │  stats.ts              │   │
+│     │  (<pruner-note>)│  │  (boundary track)│  │  (token/cost stats)    │   │
+│     └─────────────────┘  └──────────────────┘  └────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -117,12 +117,12 @@
     │          └──► NO flush                                          │
     │          └──► "4 turns queued"                                  │
     │                                                                 │
-    │  ═══════════════════════════════════════════════════════════════ │
+    │  ═══════════════════════════════════════════════════════════════│
     │  DURING THIS ENTIRE PHASE:                                      │
-    │  • The "context" event returns UNCHANGED messages                │
+    │  • The "context" event returns UNCHANGED messages               │
     │  • Prefix cache stays HOT across all turns                      │
     │  • Each new LLM request adds only the new tool result to suffix │
-    │  ═══════════════════════════════════════════════════════════════ │
+    │  ═══════════════════════════════════════════════════════════════│
     │                                                                 │
     └─────────────────────────────────────────────────────────────────┘
 ```
@@ -131,13 +131,13 @@
 
 ```
     ┌─────────────────────────────────────────────────────────────────┐
-    │  Turn 5: Assistant sends FINAL TEXT (no tool calls)              │
+    │  Turn 5: Assistant sends FINAL TEXT (no tool calls)             │
     │                                                                 │
     │  "I've built the DataTable component with sorting and           │
-    │   pagination. The build is passing now."                         │
+    │   pagination. The build is passing now."                        │
     │                                                                 │
     │     └──► message_end fires                                      │
-    │          └──► isFinalAssistantMessage(msg) === true              │
+    │          └──► isFinalAssistantMessage(msg) === true             │
     │          └──► mode === "agent-message" ✓                        │
     │          └──► flushPending(ctx, { delivery: "session" })        │
     │                                                                 │
@@ -164,9 +164,9 @@
     │  Step 2: SUMMARIZE (parallel LLM calls)                         │
     │  ──────────────────────────────────────                         │
     │  For EACH batch:                                                │
-    │    • serializeBatchForSummarizer(batch)                          │
+    │    • serializeBatchForSummarizer(batch)                         │
     │      → renders tool calls as readable text (max 2000 chars each)│
-    │    • summarizeBatch(batch, config, ctx)                          │
+    │    • summarizeBatch(batch, config, ctx)                         │
     │      → resolves model (default or custom)                       │
     │      → gets API key via ctx.modelRegistry                       │
     │      → streams LLM response (system prompt + serialized batch)  │
@@ -181,17 +181,17 @@
     │  Step 4: PERSIST INDEX                                          │
     │  ─────────────────────                                          │
     │  For each tool call in the batch:                               │
-    │    indexer.index.set(toolCallId, {                               │
+    │    indexer.index.set(toolCallId, {                              │
     │      toolCallId, toolName, args, resultText,                    │
     │      isError, turnIndex, timestamp                              │
     │    })                                                           │
     │    pi.appendEntry(CUSTOM_TYPE_INDEX, { toolCalls: [...] })      │
-    │    ↑ persisted to session file — survives restart/branch switch  │
+    │    ↑ persisted to session file — survives restart/branch switch │
     │                                                                 │
     │  Step 5: INJECT SUMMARY MESSAGE                                 │
     │  ──────────────────────────────                                 │
     │  • delivery "session":                                          │
-    │    sessionManager.appendCustomMessageEntry(                      │
+    │    sessionManager.appendCustomMessageEntry(                     │
     │      CUSTOM_TYPE_SUMMARY, summaryText, display=true, details    │
     │    )                                                            │
     │  • delivery "runtime":                                          │
@@ -202,8 +202,8 @@
     │  Step 6: ADVANCE FRONTIER                                       │
     │  ─────────────────────────                                      │
     │  frontier.advance({                                             │
-    │    lastAttemptedToolCallId,                                      │
-    │    lastAttemptedTurnIndex,                                       │
+    │    lastAttemptedToolCallId,                                     │
+    │    lastAttemptedTurnIndex,                                      │
     │    outcome: "summarized" | "skipped-oversized"                  │
     │  })                                                             │
     │  → prevents double-summarization on subsequent flushes          │
@@ -226,20 +226,20 @@
     │     └──► "context" event fires                                  │
     │                                                                 │
     │  pi.on("context", (event) => {                                  │
-    │    // indexer now has tc-001..tc-009 marked as summarized        │
-    │    const pruned = pruneMessages(event.messages, indexer)         │
+    │    // indexer now has tc-001..tc-009 marked as summarized       │
+    │    const pruned = pruneMessages(event.messages, indexer)        │
     │    //                                                           │
-    │    // WHAT pruneMessages DOES:                                   │
-    │    // messages.filter(msg =>                                     │
-    │    //   !(msg.role === "toolResult" &&                           │
-    │    //     indexer.isSummarized(msg.toolCallId))                  │
+    │    // WHAT pruneMessages DOES:                                  │
+    │    // messages.filter(msg =>                                    │
+    │    //   !(msg.role === "toolResult" &&                          │
+    │    //     indexer.isSummarized(msg.toolCallId))                 │
     │    // )                                                         │
     │    //                                                           │
-    │    // KEEPS: system, user, assistant (with toolCall blocks),     │
-    │    //        summary messages, unsummarized tool results         │
-    │    // REMOVES: toolResult messages for indexed IDs               │
+    │    // KEEPS: system, user, assistant (with toolCall blocks),    │
+    │    //        summary messages, unsummarized tool results        │
+    │    // REMOVES: toolResult messages for indexed IDs              │
     │    //                                                           │
-    │    return { messages: pruned }                                   │
+    │    return { messages: pruned }                                  │
     │  })                                                             │
     │                                                                 │
     └─────────────────────────────────────────────────────────────────┘
@@ -343,7 +343,7 @@
 
 ```
   ╔═══════════════════════════════════════════════════════════════╗
-  ║  LAYER 1: HOT MEMORY (active LLM context)                    ║
+  ║  LAYER 1: HOT MEMORY (active LLM context)                     ║
   ║                                                               ║
   ║  • System prompt                                              ║
   ║  • User messages                                              ║

@@ -176,6 +176,13 @@ export interface ContextPruneConfig {
   batchingMode: BatchingMode;
 }
 
+/**
+ * Minimum total raw chars in a batch before the summarizer LLM is invoked.
+ * Batches below this threshold are left in context as-is (they're already small
+ * enough that a summary would likely be larger than the original).
+ */
+export const MIN_RAW_CHARS_TO_SUMMARIZE = 300;
+
 export const DEFAULT_CONFIG: ContextPruneConfig = {
   enabled: false,
   showPruneStatusLine: true,
