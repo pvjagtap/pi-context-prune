@@ -86,6 +86,7 @@ Single source of truth for all interfaces and constants:
 - **`SummarizeBatchOptions`** — `{ onTextProgress? }` — optional per-call summarizer hooks. Used to surface streamed character counts during a single batch summary.
 - **`SummarizeBatchesOptions`** — `{ onBatchTextProgress? }` — optional hooks for parallel multi-batch summarization so callers can surface live per-batch text progress in the footer or overlay.
 - **`SummarizeResult`** — return type from summarizer: `{ summaryText, usage }` carrying both the markdown summary and LLM usage data.
+- **`FlushResult`** — discriminated union return type from `flushPending`: `{ ok: true; reason: "flushed" | "skipped-oversized" | "all-below-threshold"; batchCount; toolCallCount; rawCharCount; summaryCharCount }` or `{ ok: false; reason: "empty" | "already-flushing" | "summarizer-failed" | "stale-context" | "failed" | "aborted"; error? }`.
 - **`SummaryMessageDetails`** — metadata attached to `context-prune-summary` custom messages.
 - Constants: `CUSTOM_TYPE_SUMMARY`, `CUSTOM_TYPE_INDEX`, `CUSTOM_TYPE_STATS`, `STATUS_WIDGET_ID`, `DEFAULT_CONFIG`, `CONTEXT_PRUNE_TOOL_NAME`, `AGENTIC_AUTO_SYSTEM_PROMPT`.
 

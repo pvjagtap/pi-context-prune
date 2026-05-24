@@ -161,6 +161,16 @@
     │    → applies groupBatchesByMode("agent-message")                │
     │      → merges turns sharing same userTurnGroup into 1 batch     │
     │                                                                 │
+    │  Step 1b: THRESHOLD FILTER                                      │
+    │  ─────────────────────────                                      │
+    │  • Split batches into tooSmall vs worthSummarizing              │
+    │    (threshold: MIN_RAW_CHARS_TO_SUMMARIZE = 300 chars)          │
+    │  • Below-threshold batches: advance frontier with               │
+    │    outcome "skipped-below-threshold" so they're never           │
+    │    re-captured, but stay in context as-is (no index entry)      │
+    │  • If ALL batches below threshold → return early                │
+    │    (FlushResult reason: "all-below-threshold")                  │
+    │                                                                 │
     │  Step 2: SUMMARIZE (parallel LLM calls)                         │
     │  ──────────────────────────────────────                         │
     │  For EACH batch:                                                │
@@ -176,7 +186,7 @@
     │  ─────────────────────────────────────────                      │
     │  • If summary.length > rawCharCount → SKIP pruning that batch   │
     │  • Raw text stays in context (it's actually smaller!)           │
-    │  • Frontier still advances past it                              │
+    │  • Frontier advances past it (silently — no user notification)  │
     │                                                                 │
     │  Step 4: PERSIST INDEX                                          │
     │  ─────────────────────                                          │
@@ -204,7 +214,8 @@
     │  frontier.advance({                                             │
     │    lastAttemptedToolCallId,                                     │
     │    lastAttemptedTurnIndex,                                      │
-    │    outcome: "summarized" | "skipped-oversized"                  │
+    │    outcome: "summarized" | "skipped-oversized" |                │
+    │             "skipped-below-threshold"                           │
     │  })                                                             │
     │  → prevents double-summarization on subsequent flushes          │
     │                                                                 │

@@ -413,3 +413,22 @@ export interface SummarizeResult {
     };
   };
 }
+
+/**
+ * Result of a flushPending operation.
+ * Shared between index.ts and context-prune-tool.ts.
+ */
+export type FlushResult =
+  | {
+      ok: true;
+      reason: "flushed" | "skipped-oversized" | "all-below-threshold";
+      batchCount: number;
+      toolCallCount: number;
+      rawCharCount: number;
+      summaryCharCount: number;
+    }
+  | {
+      ok: false;
+      reason: "empty" | "already-flushing" | "summarizer-failed" | "stale-context" | "failed" | "aborted";
+      error?: string;
+    };
